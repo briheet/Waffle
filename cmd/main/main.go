@@ -26,8 +26,24 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 	}
 
-	fmt.Println("Client Connected")
-	conn.Close()
+	defer conn.Close()
+
+	for {
+		messageType, message, err := conn.ReadMessage()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		fmt.Println("Received Messages:", string(message))
+
+		err = conn.WriteMessage(messageType, message)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+	}
 }
 
 func main() {
