@@ -1,1 +1,1 @@
-Basic chat application using Golang, Angular and Websockets.
+Basic chat application using Golang.
