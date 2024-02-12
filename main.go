@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"golang.org/x/net/websocket"
 )
@@ -15,6 +16,16 @@ type Server struct {
 func NewServer() *Server {
 	return &Server{
 		conns: make(map[*websocket.Conn]bool),
+	}
+}
+
+func (s *Server) handleWSorderbook(ws *websocket.Conn) {
+	fmt.Println("new incoming connection from client to orderbook feed:", ws.RemoteAddr())
+
+	for {
+		payload := fmt.Sprintf("orderbook data -> %d\n", time.Now().UnixNano())
+		ws.Write([]byte(payload))
+		time.Sleep(time.Second * 2)
 	}
 }
 
@@ -36,9 +47,18 @@ func (s *Server) readloop(ws *websocket.Conn) {
 			continue
 		}
 		msg := buf[:n]
-		fmt.Println(string(msg))
-		ws.Write([]byte("thankyou for the msg!!!"))
-		break
+
+		s.broadcast(msg)
+	}
+}
+
+func (s *Server) broadcast(b []byte) {
+	for ws := range s.conns {
+		go func(ws *websocket.Conn) {
+			if _, err := ws.Write(b); err != nil {
+				fmt.Println("write error", err)
+			}
+		}(ws)
 	}
 }
 
@@ -53,6 +73,7 @@ func main() {
 		http.ServeFile(w, r, "index.html")
 	})
 	http.Handle("/ws", websocket.Handler(server.handleWS))
+	http.Handle("/orderbookfeed", websocket.Handler(server.handleWSorderbook))
 	fmt.Println("server starting at port :3000")
 	http.ListenAndServe(":3000", nil)
 }
